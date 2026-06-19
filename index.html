@@ -1846,9 +1846,12 @@ function coordToName(x, y) {
 // ════════════════════════════════════════════════════════
 
 async function generateSocialCard() {
+  // 1080×1920 = Instagram Stories / Reels / fullscreen mobile (9:16)
+  const W = 1080, H = 1920;
+  const CX = W / 2;
   const canvas = document.createElement('canvas');
-  canvas.width  = 1080;
-  canvas.height = 1080;
+  canvas.width  = W;
+  canvas.height = H;
   const ctx = canvas.getContext('2d');
 
   const d = sel;
@@ -1858,141 +1861,161 @@ async function generateSocialCard() {
   const next = turnings.find(tp => tp.time > d);
   const moon = moonInfo(d);
 
-  // ── Background photo ──
+  // ── Background photo (cover crop to 9:16) ──
   const photos = [
     'images/Ria-Formosa-from-the-Skies-Algarve.jpg',
     'images/Sunset-Boat-Tour-Season2022-21.jpg',
     'images/image1-1536x1151.jpg',
     'images/cacela-velha-1-1024x574.jpg',
+    'images/Copy-of-Algarve-Birdwatching-Walking-Tour-in-Ria-Formosa-from-Faro-1.jpg',
+    'images/Ria-Formosa-Top-of-the-Cathedral-of-Faro-Algarve-1536x864.jpg',
   ];
   await new Promise(res => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.onload = () => {
-      // Cover crop
-      const iR = img.width / img.height;
-      let sw = img.width, sh = img.height, sx = 0, sy = 0;
-      if (iR > 1) { sw = img.height; sx = (img.width - sw) / 2; }
-      else         { sh = img.width;  sy = (img.height - sh) / 2; }
-      ctx.drawImage(img, sx, sy, sw, sh, 0, 0, 1080, 1080);
+      const targetR = W / H;          // 0.5625  (9:16 portrait)
+      const imgR    = img.width / img.height;
+      let sx = 0, sy = 0, sw = img.width, sh = img.height;
+      if (imgR > targetR) {
+        sw = img.height * targetR;
+        sx = (img.width - sw) / 2;
+      } else {
+        sh = img.width / targetR;
+        sy = (img.height - sh) / 2;
+      }
+      ctx.drawImage(img, sx, sy, sw, sh, 0, 0, W, H);
       res();
     };
     img.onerror = res;
     img.src = photos[bgIdx % photos.length];
   });
 
-  // ── Dark overlay gradient ──
-  const grad = ctx.createLinearGradient(0, 0, 0, 1080);
-  grad.addColorStop(0,   'rgba(10,22,40,.72)');
-  grad.addColorStop(0.4, 'rgba(10,22,40,.45)');
-  grad.addColorStop(1,   'rgba(10,22,40,.92)');
+  // ── Dark gradient overlay — darker top & bottom, clear in middle ──
+  const grad = ctx.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0,    'rgba(8,18,32,.90)');
+  grad.addColorStop(0.28, 'rgba(8,18,32,.30)');
+  grad.addColorStop(0.55, 'rgba(8,18,32,.20)');
+  grad.addColorStop(0.72, 'rgba(8,18,32,.55)');
+  grad.addColorStop(1,    'rgba(8,18,32,.95)');
   ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, 1080, 1080);
+  ctx.fillRect(0, 0, W, H);
 
-  // ── Helper: round rect ──
-  function rr(x, y, w, h2, r2, fill) {
+  // ── Helpers ──
+  function rr(x, y, w, h2, r2, fill, stroke) {
     ctx.beginPath();
     ctx.roundRect(x, y, w, h2, r2);
-    ctx.fillStyle = fill;
-    ctx.fill();
+    if (fill)   { ctx.fillStyle = fill; ctx.fill(); }
+    if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = 1.5; ctx.stroke(); }
+  }
+  function txt(t, x, y, font, color, align = 'center') {
+    ctx.font = font; ctx.fillStyle = color; ctx.textAlign = align;
+    ctx.fillText(t, x, y);
   }
 
-  // ── WILDERNESS LOGO (text fallback) ──
-  ctx.fillStyle = 'rgba(255,255,255,.7)';
-  ctx.font = 'bold 28px -apple-system, Arial, sans-serif';
-  ctx.letterSpacing = '8px';
-  ctx.textAlign = 'center';
-  ctx.fillText('WILDERNESS SYSTEMS', 540, 70);
+  // ══════════════ TOP AREA (0–480) ══════════════
+
+  // Logo text
+  ctx.letterSpacing = '9px';
+  txt('WILDERNESS SYSTEMS', CX, 110, 'bold 34px Arial', 'rgba(255,255,255,.75)');
   ctx.letterSpacing = '0px';
 
-  // ── RIA FORMOSA tag ──
-  rr(400, 88, 280, 38, 20, 'rgba(0,180,216,.18)');
-  ctx.strokeStyle = 'rgba(0,180,216,.4)';
-  ctx.lineWidth = 1.5;
-  ctx.beginPath(); ctx.roundRect(400, 88, 280, 38, 20); ctx.stroke();
-  ctx.fillStyle = '#48cae4';
-  ctx.font = 'bold 18px -apple-system, Arial';
-  ctx.textAlign = 'center';
-  ctx.fillText('📍 Ria Formosa · Algarve', 540, 113);
+  // Location pill
+  rr(330, 130, 420, 52, 26, 'rgba(0,180,216,.15)', 'rgba(0,180,216,.4)');
+  txt('📍 Ria Formosa · Algarve', CX, 164, 'bold 22px Arial', '#48cae4');
 
-  // ── Date + time ──
-  ctx.fillStyle = 'rgba(255,255,255,.55)';
-  ctx.font = '32px -apple-system, Arial';
+  // Date
   const dayPT = d.toLocaleDateString('pt-PT', { weekday: 'long', day: 'numeric', month: 'long' });
-  const timePT = `${p2(d.getHours())}:${p2(d.getMinutes())}`;
-  ctx.fillText(`${dayPT}  ·  ${timePT}`, 540, 175);
+  txt(dayPT, CX, 228, '38px Arial', 'rgba(255,255,255,.70)');
 
-  // ── Big tide direction ──
-  const rising = r > 0.08;
+  // Time big
+  const timePT = `${p2(d.getHours())}:${p2(d.getMinutes())}`;
+  txt(timePT, CX, 340, 'bold 160px Arial', '#ffffff');
+
+  // ══════════════ TIDE DIRECTION (480–780) ══════════════
+
+  const rising  = r > 0.08;
   const falling = r < -0.08;
   const tideColor = rising ? '#22c55e' : falling ? '#f97316' : '#00b4d8';
-  const tideText  = rising ? '↑ MARÉ A SUBIR' : falling ? '↓ MARÉ A DESCER' : '◎ ÁGUA PARADA';
+  const tideArrow = rising ? '↑' : falling ? '↓' : '◎';
+  const tideLabel = rising ? 'MARÉ A SUBIR' : falling ? 'MARÉ A DESCER' : 'ÁGUA PARADA';
 
-  ctx.fillStyle = tideColor;
-  ctx.font = 'bold 68px -apple-system, Arial';
+  // Arrow circle
+  ctx.beginPath();
+  ctx.arc(CX, 555, 108, 0, Math.PI * 2);
+  ctx.fillStyle = tideColor + '22';
+  ctx.fill();
+  ctx.strokeStyle = tideColor + '66';
+  ctx.lineWidth = 3;
+  ctx.stroke();
+  txt(tideArrow, CX, 605, '140px Arial', tideColor);
+
   ctx.letterSpacing = '6px';
-  ctx.fillText(tideText, 540, 290);
+  txt(tideLabel, CX, 690, 'bold 52px Arial', tideColor);
   ctx.letterSpacing = '0px';
 
-  // ── Height display ──
-  ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 200px -apple-system, Arial';
-  ctx.textAlign = 'center';
-  ctx.fillText(h.toFixed(1), 540, 510);
-  ctx.fillStyle = 'rgba(255,255,255,.5)';
-  ctx.font = '52px -apple-system, Arial';
-  ctx.fillText('metros', 540, 575);
+  // ══════════════ HEIGHT (780–1020) ══════════════
 
-  // ── Next turning point ──
+  txt(h.toFixed(2), CX, 910, 'bold 240px Arial', '#ffffff');
+  txt('metros', CX, 975, '50px Arial', 'rgba(255,255,255,.45)');
+
+  // Rate
+  const rateStr = Math.abs(r) < 0.08 ? 'corrente mínima' : (r > 0 ? '+' : '') + r.toFixed(2) + ' m/h';
+  txt(rateStr, CX, 1030, '34px Arial', tideColor);
+
+  // ══════════════ NEXT TURNING POINT (1050–1160) ══════════════
+
   if (next) {
     const mins = Math.round((next.time - d) / 60000);
     const hh = Math.floor(mins / 60), mm = mins % 60;
     const whenStr = hh > 0 ? `${hh}h ${mm}min` : `${mm}min`;
     const typeStr = next.type === 'HW' ? '↑ Preia-Mar' : '↓ Baixa-Mar';
-    rr(140, 605, 800, 64, 32, 'rgba(255,255,255,.07)');
-    ctx.fillStyle = 'rgba(255,255,255,.85)';
-    ctx.font = 'bold 28px -apple-system, Arial';
-    ctx.fillText(`Próxima ${typeStr}: ${p2(next.time.getHours())}:${p2(next.time.getMinutes())} (${next.height.toFixed(2)}m) · em ${whenStr}`, 540, 645);
+    rr(80, 1060, 920, 80, 40, 'rgba(255,255,255,.06)');
+    txt(`${typeStr}  ${p2(next.time.getHours())}:${p2(next.time.getMinutes())}  ·  ${next.height.toFixed(2)} m  ·  em ${whenStr}`,
+        CX, 1107, 'bold 30px Arial', 'rgba(255,255,255,.85)');
   }
 
-  // ── Location + current ──
+  // ══════════════ LOCATION & CURRENT (1170–1380) ══════════════
+
   if (selectedSpot && flow) {
-    rr(80, 695, 920, 110, 24, 'rgba(0,180,216,.10)');
-    ctx.strokeStyle = 'rgba(0,180,216,.3)';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.roundRect(80, 695, 920, 110, 24); ctx.stroke();
-
-    ctx.fillStyle = '#48cae4';
-    ctx.font = 'bold 24px -apple-system, Arial';
-    ctx.fillText(`${selectedSpot.emoji} ${selectedSpot.name}`, 540, 732);
-    ctx.fillStyle = flow.color;
-    ctx.font = 'bold 38px -apple-system, Arial';
-    ctx.fillText(`${flow.arrow} ${flow.dir}`, 540, 780);
+    rr(60, 1170, 960, 170, 28, 'rgba(0,180,216,.09)', 'rgba(0,180,216,.28)');
+    txt(`${selectedSpot.emoji}  ${selectedSpot.name}`, CX, 1220, 'bold 34px Arial', '#48cae4');
+    txt(`${flow.arrow}  ${flow.dir}`, CX, 1290, 'bold 54px Arial', flow.color);
+    txt(flow.sub, CX, 1340, '26px Arial', 'rgba(255,255,255,.55)');
   }
 
-  // ── Moon phase ──
-  ctx.fillStyle = 'rgba(255,255,255,.5)';
-  ctx.font = '28px -apple-system, Arial';
-  ctx.fillText(`${moon.emoji} ${moon.name}  ·  ${moon.tideType}`, 540, 850);
+  // ══════════════ MOON + WIND (1390–1530) ══════════════
 
-  // ── Challenge line ──
-  rr(140, 875, 800, 70, 35, 'rgba(0,180,216,.15)');
-  ctx.fillStyle = '#00b4d8';
-  ctx.font = 'bold 30px -apple-system, Arial';
-  ctx.fillText('🛶 Vens comigo andar de kayak?', 540, 918);
+  // Moon
+  rr(60, 1390, 450, 120, 24, 'rgba(255,255,255,.05)');
+  txt(moon.emoji, 160, 1465, '64px Arial', '#fff');
+  txt(moon.name, 300, 1445, 'bold 28px Arial', '#e2e8f0', 'left');
+  txt(moon.tideType, 300, 1488, '22px Arial', 'rgba(255,255,255,.5)', 'left');
 
-  // ── App URL watermark ──
-  ctx.fillStyle = 'rgba(255,255,255,.3)';
-  ctx.font = '22px -apple-system, Arial';
-  ctx.fillText('articoclim-bot.github.io/ria-formosa-kayak', 540, 1010);
+  // Wind (if fetched)
+  if (_windCache) {
+    const ws = windKayakStatus(_windCache.speed, _windCache.gusts);
+    rr(540, 1390, 500, 120, 24, 'rgba(255,255,255,.05)');
+    txt('💨', 610, 1465, '64px Arial', '#fff');
+    txt(`${_windCache.speed} nós`, 720, 1445, 'bold 34px Arial', '#00b4d8', 'left');
+    txt(`De ${degToCompass(_windCache.dir)} · raj. ${_windCache.gusts} nós`, 720, 1486, '22px Arial', 'rgba(255,255,255,.5)', 'left');
+  }
 
-  // ── Bottom line ──
-  ctx.strokeStyle = 'rgba(0,180,216,.25)';
-  ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.moveTo(80, 1030); ctx.lineTo(1000, 1030); ctx.stroke();
-  ctx.fillStyle = 'rgba(255,255,255,.2)';
-  ctx.font = '18px -apple-system, Arial';
-  ctx.fillText('#RiaFormosaKayak  #WildernessSystems  #Kayak  #Algarve', 540, 1058);
+  // ══════════════ CHALLENGE (1580–1720) ══════════════
+
+  rr(80, 1580, 920, 110, 55, 'rgba(0,180,216,.18)', 'rgba(0,180,216,.35)');
+  txt('🛶 Vens comigo andar de kayak?', CX, 1625, 'bold 42px Arial', '#ffffff');
+  txt('Ria Formosa · Algarve', CX, 1672, '30px Arial', 'rgba(255,255,255,.6)');
+
+  // ══════════════ HASHTAGS + URL (1750–1900) ══════════════
+
+  txt('#RiaFormosaKayak  #WildernessSystems  #Kayak  #Algarve', CX, 1780, '26px Arial', 'rgba(255,255,255,.35)');
+
+  ctx.strokeStyle = 'rgba(0,180,216,.2)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(80, 1810); ctx.lineTo(W - 80, 1810); ctx.stroke();
+
+  txt('articoclim-bot.github.io/ria-formosa-kayak', CX, 1860, '24px Arial', 'rgba(255,255,255,.25)');
 
   return canvas;
 }
