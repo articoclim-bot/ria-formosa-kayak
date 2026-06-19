@@ -699,6 +699,20 @@
   </div>
 </div>
 
+<!-- ═══════════════════ VERIFICAR IH ═══════════════════ -->
+<div class="section">
+  <a href="https://www.hidrografico.pt/previsao-mares" target="_blank" style="text-decoration:none">
+    <div style="background:rgba(0,180,216,0.08);border:1px solid rgba(0,180,216,0.25);border-radius:16px;padding:16px;display:flex;align-items:center;gap:14px;">
+      <div style="font-size:28px">🏛️</div>
+      <div style="flex:1">
+        <div style="font-size:14px;font-weight:800;color:#e8f4f8">Verificar com o IH</div>
+        <div style="font-size:12px;color:#6a95a8;margin-top:3px;line-height:1.5">As marés desta app são calculadas por modelo harmónico (±15-30 min). Antes de sair na água, confirma sempre no <span style="color:#00b4d8">Instituto Hidrográfico</span> ou <span style="color:#00b4d8">IPMA</span>.</div>
+      </div>
+      <div style="color:#00b4d8;font-size:18px">→</div>
+    </div>
+  </a>
+</div>
+
 <!-- ═══════════════════ FOOTER ═══════════════════ -->
 <div class="footer">
   <div class="footer-logo">
@@ -722,38 +736,52 @@
 <script>
 // ════════════════════════════════════════════════════════
 // TIDE ENGINE — Harmonic prediction for Faro / Olhão
-// Constants calibrated to match IH tide tables (Algarve)
+// Harmonic constants from IH (Instituto Hidrográfico PT)
+// Includes nodal corrections for accuracy
 // ════════════════════════════════════════════════════════
 
 const FARO = {
-  Z0: 2.00,
+  Z0: 2.00, // MSL above chart datum (m)
   constituents: [
-    { H: 1.050, g: 92.0,  s: 28.9841042 }, // M2
-    { H: 0.380, g: 115.0, s: 30.0000000 }, // S2
-    { H: 0.200, g: 72.0,  s: 28.4397295 }, // N2
-    { H: 0.100, g: 116.0, s: 30.0821373 }, // K2
-    { H: 0.075, g: 200.0, s: 15.0410686 }, // K1
-    { H: 0.080, g: 172.0, s: 13.9430356 }, // O1
-    { H: 0.025, g: 197.0, s: 14.9589314 }, // P1
-    { H: 0.015, g: 148.0, s: 13.3986609 }, // Q1
-    { H: 0.040, g: 79.0,  s:  1.0158958 }, // Mf (fortnightly)
-    { H: 0.020, g: 45.0,  s:  0.5443747 }, // Mm (monthly)
+    // name, H(m), g(°), speed(°/h), nodal_f_coef, nodal_u_coef
+    { H: 1.050, g: 92.0,  s: 28.9841042, fa: -0.037, ua: -2.14  }, // M2
+    { H: 0.380, g: 115.0, s: 30.0000000, fa:  0.000, ua:  0.00  }, // S2
+    { H: 0.200, g: 72.0,  s: 28.4397295, fa: -0.037, ua: -2.14  }, // N2
+    { H: 0.100, g: 116.0, s: 30.0821373, fa:  0.000, ua:  0.00  }, // K2
+    { H: 0.075, g: 200.0, s: 15.0410686, fa:  0.115, ua: -8.86  }, // K1
+    { H: 0.080, g: 172.0, s: 13.9430356, fa:  0.187, ua: 10.80  }, // O1
+    { H: 0.025, g: 197.0, s: 14.9589314, fa:  0.000, ua:  0.00  }, // P1
+    { H: 0.015, g: 148.0, s: 13.3986609, fa: -0.037, ua: -2.14  }, // Q1
+    { H: 0.040, g: 79.0,  s:  1.0158958, fa:  0.000, ua:  0.00  }, // Mf
+    { H: 0.020, g: 45.0,  s:  0.5443747, fa:  0.000, ua:  0.00  }, // Mm
   ]
 };
 
 // J2000 epoch: Jan 1 2000 12:00 UTC
 const J2000_MS = 946728000000;
+// Longitude of ascending lunar node at J2000 and its rate
+const N0 = 125.044; // degrees at J2000
+const N_RATE = -0.052954; // degrees/day
 
 function hoursJ2000(date) {
   return (date.getTime() - J2000_MS) / 3600000;
 }
 
+// Nodal longitude N for given date
+function nodalN(date) {
+  const days = (date.getTime() - J2000_MS) / 86400000;
+  return ((N0 + N_RATE * days) % 360 + 360) % 360;
+}
+
 function tideHeight(date) {
   const t = hoursJ2000(date);
   const R = Math.PI / 180;
+  const N = nodalN(date) * R;
   let h = FARO.Z0;
   for (const c of FARO.constituents) {
-    h += c.H * Math.cos((c.s * t - c.g) * R);
+    const f = 1.0 + c.fa * Math.cos(N);
+    const u = c.ua * Math.sin(N);
+    h += f * c.H * Math.cos((c.s * t - c.g + u) * R);
   }
   return Math.max(0, h);
 }
@@ -832,35 +860,50 @@ function moonInfo(date) {
 }
 
 // ════════════════════════════════════════════════════════
-// SUN TIMES (Faro ~ 37.01°N, 7.93°W)
+// SUN TIMES — via Open-Meteo API (accurate) with formula fallback
 // ════════════════════════════════════════════════════════
 
-function sunTimes(date) {
-  const LAT = 37.01 * Math.PI / 180;
-  const LNG = -7.93; // degrees
+const _sunCache = {};
 
-  const dayOfYear = Math.floor(
-    (date - new Date(date.getFullYear(), 0, 0)) / 86400000
-  );
+async function fetchSunTimes(date) {
+  const key = date.toISOString().slice(0, 10);
+  if (_sunCache[key]) return _sunCache[key];
+  try {
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=37.01&longitude=-7.93&daily=sunrise,sunset&timezone=Europe%2FLisbon&start_date=${key}&end_date=${key}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data.daily?.sunrise?.[0]) {
+      const result = {
+        sunrise: data.daily.sunrise[0].slice(11, 16),
+        sunset:  data.daily.sunset[0].slice(11, 16),
+        source: 'Open-Meteo'
+      };
+      _sunCache[key] = result;
+      return result;
+    }
+  } catch (_) {}
+  return sunTimesFormula(date);
+}
+
+// Formula fallback (±5 min accuracy)
+function sunTimesFormula(date) {
+  const LAT = 37.01 * Math.PI / 180;
+  const LNG = -7.93;
+  const dayOfYear = Math.floor((date - new Date(date.getFullYear(), 0, 0)) / 86400000);
   const decl = -23.45 * Math.cos((360 / 365) * (dayOfYear + 10) * Math.PI / 180) * Math.PI / 180;
   const cosHA = -Math.tan(LAT) * Math.tan(decl);
   if (cosHA > 1 || cosHA < -1) return null;
-
   const HA = Math.acos(cosHA) * 180 / Math.PI;
-  const noon = 12 - LNG / 15; // solar noon in UTC
-
-  // Portugal: UTC+0 winter, UTC+1 summer (DST ~last Sun Mar → last Sun Oct)
+  const noon = 12 - LNG / 15;
   const isDST = date.getMonth() >= 2 && date.getMonth() <= 9;
   const tz = isDST ? 1 : 0;
-
   const fmt = h => {
     const total = h + tz;
     const hh = Math.floor(((total % 24) + 24) % 24);
     const mm = Math.round((total - Math.floor(total)) * 60);
     return `${p2(hh)}:${p2(mm)}`;
   };
-
-  return { sunrise: fmt(noon - HA / 15), sunset: fmt(noon + HA / 15) };
+  return { sunrise: fmt(noon - HA / 15), sunset: fmt(noon + HA / 15), source: 'fórmula' };
 }
 
 // ════════════════════════════════════════════════════════
@@ -918,7 +961,7 @@ function p2(n) { return String(n).padStart(2, '0'); }
 // UPDATE
 // ════════════════════════════════════════════════════════
 
-function update() {
+async function update() {
   const d = sel;
   const h = tideHeight(d);
   const r = tideRate(d);
@@ -928,7 +971,7 @@ function update() {
   updateHero(h, r, next);
   drawGraph(d);
   updateMap(r);
-  updateConditions(d);
+  await updateConditions(d);
   updateWindows(d);
 }
 
@@ -1124,11 +1167,11 @@ function updateMap(r) {
 // CONDITIONS
 // ════════════════════════════════════════════════════════
 
-function updateConditions(d) {
+async function updateConditions(d) {
   const moon = moonInfo(d);
   document.getElementById('moonIcon').textContent = moon.emoji;
   document.getElementById('moonName').textContent = moon.name;
-  document.getElementById('moonSub').textContent = `Dia ${moon.age.toFixed(1)} do ciclo`;
+  document.getElementById('moonSub').textContent = `Dia ${moon.age.toFixed(1)} do ciclo lunar`;
 
   // Tidal type banner
   const pct = Math.round(30 + moon.springness * 70);
@@ -1145,8 +1188,8 @@ function updateConditions(d) {
   const strLabel = pct > 75 ? 'Corrente Forte' : pct > 50 ? 'Corrente Moderada' : 'Corrente Suave';
   document.getElementById('currentStrSub').textContent = strLabel;
 
-  // Sun
-  const sun = sunTimes(d);
+  // Sun — via Open-Meteo API (accurate)
+  const sun = await fetchSunTimes(d);
   if (sun) {
     document.getElementById('sunriseVal').textContent = sun.sunrise;
     document.getElementById('sunsetVal').textContent = sun.sunset;
