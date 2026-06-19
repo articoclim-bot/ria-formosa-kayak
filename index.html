@@ -384,6 +384,18 @@
       color: var(--teal-lt);
     }
     .spot-chip:active { opacity: .7; }
+    .spot-sep {
+      flex-shrink: 0;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .5px;
+      color: var(--muted);
+      opacity: .7;
+      padding: 0 6px;
+      align-self: center;
+      white-space: nowrap;
+    }
+    .spot-sep:not(:first-child) { margin-left: 10px; }
 
     /* ── LOCATION FLOW CARD ── */
     .loc-card {
@@ -1690,16 +1702,18 @@ const BARRAS = [
 ];
 
 const LAUNCH_POINTS = [
-  { name: 'Cais de Faro',     svgX:  70, svgY:  75, emoji: '⚓', desc: 'Junto à Doca de Faro' },
-  { name: 'Olhão',            svgX: 148, svgY:  75, emoji: '🐟', desc: 'Doca de pesca de Olhão' },
-  { name: 'Fuzeta',           svgX: 228, svgY:  75, emoji: '🏖️', desc: 'Praia de Fuzeta' },
-  { name: 'Quatro Águas',     svgX: 295, svgY:  80, emoji: '🛶', desc: 'Tavira – Quatro Águas' },
+  // ── Continente (oeste → este) ──
+  { name: 'Cais de Faro',      svgX:  70, svgY:  75, emoji: '⚓', desc: 'Junto à Doca de Faro' },
+  { name: 'Olhão',             svgX: 148, svgY:  75, emoji: '🐟', desc: 'Doca de pesca de Olhão' },
+  { name: 'Fuzeta',            svgX: 228, svgY:  75, emoji: '🏖️', desc: 'Praia de Fuzeta' },
+  { name: 'Quatro Águas',      svgX: 295, svgY:  80, emoji: '🛶', desc: 'Tavira – Quatro Águas' },
   { name: 'Cabanas de Tavira', svgX: 335, svgY:  75, emoji: '⛵', desc: 'Cais de Cabanas de Tavira' },
-  { name: 'Ilha Deserta',     svgX:  32, svgY: 157, emoji: '🏝️', desc: 'Ilha Barreta – ponta oeste' },
-  { name: 'Farol / Culatra',  svgX: 110, svgY: 157, emoji: '🏠', desc: 'Ilha da Culatra' },
-  { name: 'Armona – Cais',    svgX: 185, svgY: 157, emoji: '🛟', desc: 'Ilha da Armona' },
-  { name: 'Ilha de Tavira',   svgX: 280, svgY: 157, emoji: '🏝️', desc: 'Ilha de Tavira – cais' },
-  { name: 'Cacela Velha',     svgX: 342, svgY: 157, emoji: '🏰', desc: 'Ilha de Cabanas' },
+  // ── Ilhas Barreira (oeste → este) ──
+  { name: 'Ilha Deserta',      svgX:  32, svgY: 157, emoji: '🏝️', desc: 'Ilha Barreta – ponta oeste' },
+  { name: 'Farol / Culatra',   svgX: 110, svgY: 157, emoji: '🏠', desc: 'Ilha da Culatra' },
+  { name: 'Armona – Cais',     svgX: 185, svgY: 157, emoji: '🛟', desc: 'Ilha da Armona' },
+  { name: 'Ilha de Tavira',    svgX: 280, svgY: 157, emoji: '🏝️', desc: 'Ilha de Tavira – cais' },
+  { name: 'Cacela Velha',      svgX: 342, svgY: 157, emoji: '🏰', desc: 'Ilha de Cabanas' },
 ];
 
 let selectedSpot = null;
@@ -1792,14 +1806,27 @@ function updateLocationCard() {
 
 function setupSpots() {
   const row = document.getElementById('spotsRow');
-  LAUNCH_POINTS.forEach(sp => {
-    const btn = document.createElement('button');
-    btn.className = 'spot-chip';
-    btn.dataset.spot = sp.name;
-    btn.textContent = `${sp.emoji} ${sp.name}`;
-    btn.addEventListener('click', () => selectSpot(sp));
-    row.appendChild(btn);
-  });
+  const continente = LAUNCH_POINTS.filter(p => p.svgY < 120);
+  const ilhas      = LAUNCH_POINTS.filter(p => p.svgY >= 120);
+
+  function addGroup(label, points) {
+    const sep = document.createElement('span');
+    sep.className = 'spot-sep';
+    sep.textContent = label;
+    row.appendChild(sep);
+    points.forEach(sp => {
+      const btn = document.createElement('button');
+      btn.className = 'spot-chip';
+      btn.dataset.spot = sp.name;
+      btn.textContent = `${sp.emoji} ${sp.name}`;
+      btn.addEventListener('click', () => selectSpot(sp));
+      row.appendChild(btn);
+    });
+  }
+
+  addGroup('🏙️ Continente', continente);
+  addGroup('🏝️ Ilhas', ilhas);
+
 
   // Map click/touch
   const svg = document.getElementById('riaMap');
