@@ -354,6 +354,165 @@
       text-transform: uppercase;
     }
 
+    /* ── SPOTS / LOCATION PICKER ── */
+    .spots-scroll {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+      margin-bottom: 14px;
+      scrollbar-width: none;
+    }
+    .spots-scroll::-webkit-scrollbar { display: none; }
+    .spot-chip {
+      flex-shrink: 0;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 8px 14px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all .15s;
+    }
+    .spot-chip.active {
+      background: rgba(0,180,216,.18);
+      border-color: var(--teal);
+      color: var(--teal-lt);
+    }
+    .spot-chip:active { opacity: .7; }
+
+    /* ── LOCATION FLOW CARD ── */
+    .loc-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 20px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 12px;
+    }
+    .loc-arrow-wrap {
+      width: 64px;
+      height: 64px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      background: rgba(0,180,216,.1);
+      border: 2px solid rgba(0,180,216,.2);
+      font-size: 32px;
+      transition: all .4s;
+    }
+    .loc-info { flex: 1; min-width: 0; }
+    .loc-name { font-size: 14px; font-weight: 800; color: #fff; margin-bottom: 4px; }
+    .loc-dir  { font-size: 22px; font-weight: 800; margin-bottom: 2px; }
+    .loc-sub  { font-size: 12px; color: var(--muted); line-height: 1.4; }
+    .loc-hint {
+      font-size: 11px;
+      color: var(--muted);
+      text-align: center;
+      padding: 8px 0 4px;
+      opacity: .7;
+    }
+
+    /* ── SHARE BUTTON ── */
+    .share-section {
+      padding: 0 20px 28px;
+    }
+    .btn-share {
+      width: 100%;
+      background: linear-gradient(135deg, #00b4d8, #0077b6);
+      border: none;
+      border-radius: 16px;
+      padding: 18px;
+      color: #fff;
+      font-size: 16px;
+      font-weight: 800;
+      font-family: inherit;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      letter-spacing: .04em;
+      transition: opacity .15s, transform .1s;
+    }
+    .btn-share:active { opacity: .85; transform: scale(.98); }
+
+    /* ── CARD MODAL ── */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.85);
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+      padding: 0 0 max(env(safe-area-inset-bottom,0px),16px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .25s;
+    }
+    .modal-overlay.open { opacity: 1; pointer-events: all; }
+    .modal-card {
+      background: var(--blue-dk);
+      border-radius: 24px 24px 0 0;
+      padding: 20px;
+      width: 100%;
+      max-width: 480px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      transform: translateY(100%);
+      transition: transform .3s cubic-bezier(.4,0,.2,1);
+    }
+    .modal-overlay.open .modal-card { transform: translateY(0); }
+    .modal-handle {
+      width: 40px;
+      height: 4px;
+      background: rgba(255,255,255,.2);
+      border-radius: 4px;
+      align-self: center;
+      margin-bottom: 4px;
+    }
+    .modal-preview {
+      border-radius: 14px;
+      overflow: hidden;
+      aspect-ratio: 1;
+    }
+    .modal-preview canvas, .modal-preview img { width: 100%; display: block; }
+    .modal-title { font-size: 16px; font-weight: 800; color: #fff; text-align: center; }
+    .modal-actions { display: flex; gap: 10px; }
+    .btn-modal {
+      flex: 1;
+      border: none;
+      border-radius: 12px;
+      padding: 14px;
+      font-size: 14px;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+      transition: opacity .15s;
+    }
+    .btn-modal:active { opacity: .8; }
+    .btn-modal-primary { background: var(--teal); color: var(--navy); }
+    .btn-modal-secondary { background: rgba(255,255,255,.08); color: #fff; border: 1px solid var(--border); }
+    .btn-modal-close {
+      background: none; border: none; color: var(--muted); font-size: 13px;
+      font-family: inherit; cursor: pointer; text-align: center; padding: 4px;
+    }
+
+    /* ── MAP interactive ── */
+    #riaMap { cursor: crosshair; }
+    .map-pin { pointer-events: none; }
+
     /* ── FOOTER ── */
     .footer {
       padding: 24px 20px calc(env(safe-area-inset-bottom, 0px) + 32px);
@@ -469,6 +628,26 @@
 
   </div>
 </div><!-- /hero -->
+
+<!-- ═══════════════════ LOCATION PICKER ═══════════════════ -->
+<div class="section">
+  <div class="sec-title">O teu ponto de kayak</div>
+
+  <div class="spots-scroll" id="spotsRow">
+    <!-- Chips injected by JS -->
+  </div>
+
+  <div class="loc-card" id="locCard">
+    <div class="loc-arrow-wrap" id="locArrow">🛶</div>
+    <div class="loc-info">
+      <div class="loc-name" id="locName">Escolhe um ponto</div>
+      <div class="loc-dir" id="locDir">—</div>
+      <div class="loc-sub" id="locSub">Toca num ponto do mapa ou escolhe acima</div>
+    </div>
+  </div>
+
+  <div class="loc-hint">↓ Toca no mapa para escolher qualquer ponto</div>
+</div>
 
 <!-- ═══════════════════ TIDE GRAPH ═══════════════════ -->
 <div class="section">
@@ -635,6 +814,15 @@
         <text x="180" y="108" fill="#00b4d8" font-size="8" text-anchor="middle" font-family="sans-serif" opacity=".5">água parada · slack water</text>
       </g>
 
+      <!-- Drop pin (moved by JS) -->
+      <g id="mapPin" class="map-pin" style="display:none">
+        <circle cx="0" cy="0" r="10" fill="rgba(0,180,216,.25)" stroke="#00b4d8" stroke-width="1.5"/>
+        <circle cx="0" cy="0" r="4" fill="#00b4d8"/>
+        <line x1="0" y1="-14" x2="0" y2="-10" stroke="#00b4d8" stroke-width="1.5"/>
+        <line x1="0" y1="10"  x2="0" y2="14"  stroke="#00b4d8" stroke-width="1.5"/>
+        <line x1="-14" y1="0" x2="-10" y2="0" stroke="#00b4d8" stroke-width="1.5"/>
+        <line x1="10"  y1="0" x2="14"  y2="0" stroke="#00b4d8" stroke-width="1.5"/>
+      </g>
     </svg>
 
     <div class="map-info">
@@ -696,6 +884,28 @@
   <div class="sec-title">Melhores Momentos · Hoje</div>
   <div class="windows-list" id="windowsList">
     <div class="win-item"><div class="win-info"><div class="win-desc">A calcular...</div></div></div>
+  </div>
+</div>
+
+<!-- ═══════════════════ PARTILHAR ═══════════════════ -->
+<div class="share-section">
+  <button class="btn-share" id="btnShare">
+    <span style="font-size:20px">📸</span>
+    Gerar card para partilhar
+  </button>
+</div>
+
+<!-- ═══════════════════ MODAL CARD ═══════════════════ -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal-card">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Card pronto para partilhar 🛶</div>
+    <div class="modal-preview" id="modalPreview"></div>
+    <div class="modal-actions">
+      <button class="btn-modal btn-modal-primary" id="btnShareNative">📤 Partilhar</button>
+      <button class="btn-modal btn-modal-secondary" id="btnDownload">💾 Guardar</button>
+    </div>
+    <button class="btn-modal-close" id="btnCloseModal">Fechar</button>
   </div>
 </div>
 
@@ -919,6 +1129,8 @@ function init() {
   document.getElementById('yearEl').textContent = new Date().getFullYear();
   setupInputs();
   setupBg();
+  setupSpots();
+  setupShare();
   update();
   liveTimer = setInterval(() => { if (liveMode) { sel = new Date(); update(); } }, 60000);
   window.addEventListener('resize', () => drawGraph(sel));
@@ -973,6 +1185,7 @@ async function update() {
   updateMap(r);
   await updateConditions(d);
   updateWindows(d);
+  updateLocationCard();
 }
 
 // ════════════════════════════════════════════════════════
@@ -1313,6 +1526,377 @@ function setupBg() {
     bgIdx = (bgIdx + 1) % imgs.length;
     imgs[bgIdx].className = 'active';
   }, 9000);
+}
+
+// ════════════════════════════════════════════════════════
+// LAUNCH POINTS & FLOW LOGIC
+// ════════════════════════════════════════════════════════
+
+// SVG viewBox is 0 0 360 215
+// Barras (inlets) – x positions in SVG coords
+const BARRAS = [
+  { name: 'Barra de Faro/Olhão', svgX: 66,  emoji: '🌊' },
+  { name: 'Barra da Armona',     svgX: 158, emoji: '🌊' },
+  { name: 'Barra da Fuzeta',     svgX: 215, emoji: '🌊' },
+  { name: 'Barra de Tavira',     svgX: 252, emoji: '🌊' },
+  { name: 'Barra de Manta Rota', svgX: 323, emoji: '🌊' },
+];
+
+const LAUNCH_POINTS = [
+  { name: 'Cais de Faro',     svgX:  70, svgY:  75, emoji: '⚓', desc: 'Junto à Doca de Faro' },
+  { name: 'Olhão',            svgX: 148, svgY:  75, emoji: '🐟', desc: 'Doca de pesca de Olhão' },
+  { name: 'Fuzeta',           svgX: 228, svgY:  75, emoji: '🏖️', desc: 'Praia de Fuzeta' },
+  { name: 'Quatro Águas',     svgX: 295, svgY:  80, emoji: '🛶', desc: 'Tavira – Quatro Águas' },
+  { name: 'Ilha Deserta',     svgX:  32, svgY: 157, emoji: '🏝️', desc: 'Ilha Barreta – ponta oeste' },
+  { name: 'Farol / Culatra',  svgX: 110, svgY: 157, emoji: '🏠', desc: 'Ilha da Culatra' },
+  { name: 'Armona – Cais',    svgX: 185, svgY: 157, emoji: '🛟', desc: 'Ilha da Armona' },
+  { name: 'Ilha de Tavira',   svgX: 280, svgY: 157, emoji: '🏝️', desc: 'Ilha de Tavira – cais' },
+  { name: 'Cacela Velha',     svgX: 342, svgY: 157, emoji: '🏰', desc: 'Ilha de Cabanas' },
+];
+
+let selectedSpot = null;
+
+function getFlowAtPoint(svgX, svgY, rate) {
+  // Is it near a barra (strong cross-lagoon flow)?
+  const nearBarra = BARRAS.find(b => Math.abs(b.svgX - svgX) < 12);
+  const isInLagoon = svgY > 50 && svgY < 160;
+  const isOnIsland = svgY > 148 && svgY < 170;
+
+  if (Math.abs(rate) < 0.08) {
+    return { arrow: '◎', dir: 'Água parada (Slack Water)', sub: 'Corrente mínima · melhor momento para atravessar canais', color: '#00b4d8' };
+  }
+
+  const rising = rate > 0;
+
+  // Near a barra → cross-lagoon flow (N/S)
+  if (nearBarra) {
+    if (rising) {
+      return {
+        arrow: '↑',
+        dir: 'Corrente para Norte',
+        sub: `A água entra pelo ${nearBarra.name} em direção à lagoa · cuidado ao atravessar`,
+        color: '#22c55e'
+      };
+    } else {
+      return {
+        arrow: '↓',
+        dir: 'Corrente para Sul',
+        sub: `A água sai pelo ${nearBarra.name} em direção ao oceano · cuidado ao atravessar`,
+        color: '#f97316'
+      };
+    }
+  }
+
+  // Main channel → find nearest barra for lateral flow
+  const sorted = [...BARRAS].sort((a, b) => Math.abs(a.svgX - svgX) - Math.abs(b.svgX - svgX));
+  const nearest = sorted[0];
+  const isBarraToWest = nearest.svgX < svgX;
+
+  if (rising) {
+    // Rising: water comes FROM nearest barra, flows AWAY from it
+    if (isBarraToWest) {
+      return { arrow: '→', dir: 'Corrente para Este', sub: `Água vinda da ${nearest.name} · flui para leste`, color: '#22c55e' };
+    } else {
+      return { arrow: '←', dir: 'Corrente para Oeste', sub: `Água vinda da ${nearest.name} · flui para oeste`, color: '#22c55e' };
+    }
+  } else {
+    // Falling: water flows TOWARD nearest barra
+    if (isBarraToWest) {
+      return { arrow: '←', dir: 'Corrente para Oeste', sub: `Drena para a ${nearest.name} · corrente para oeste`, color: '#f97316' };
+    } else {
+      return { arrow: '→', dir: 'Corrente para Este', sub: `Drena para a ${nearest.name} · corrente para este`, color: '#f97316' };
+    }
+  }
+}
+
+function selectSpot(spot, fromMap = false) {
+  selectedSpot = spot;
+
+  // Update chips
+  document.querySelectorAll('.spot-chip').forEach(c => c.classList.remove('active'));
+  if (!fromMap) {
+    const chip = document.querySelector(`[data-spot="${spot.name}"]`);
+    if (chip) chip.classList.add('active');
+  }
+
+  // Move pin on map
+  const pin = document.getElementById('mapPin');
+  pin.style.display = '';
+  pin.setAttribute('transform', `translate(${spot.svgX},${spot.svgY})`);
+
+  updateLocationCard();
+}
+
+function updateLocationCard() {
+  if (!selectedSpot) return;
+  const r = tideRate(sel);
+  const flow = getFlowAtPoint(selectedSpot.svgX, selectedSpot.svgY, r);
+
+  document.getElementById('locName').textContent = `${selectedSpot.emoji} ${selectedSpot.name}`;
+  document.getElementById('locDir').textContent = `${flow.arrow} ${flow.dir}`;
+  document.getElementById('locDir').style.color = flow.color;
+  document.getElementById('locSub').textContent = flow.sub;
+  document.getElementById('locArrow').textContent = flow.arrow;
+  document.getElementById('locArrow').style.color = flow.color;
+  document.getElementById('locArrow').style.borderColor = flow.color + '55';
+  document.getElementById('locArrow').style.background = flow.color + '18';
+}
+
+function setupSpots() {
+  const row = document.getElementById('spotsRow');
+  LAUNCH_POINTS.forEach(sp => {
+    const btn = document.createElement('button');
+    btn.className = 'spot-chip';
+    btn.dataset.spot = sp.name;
+    btn.textContent = `${sp.emoji} ${sp.name}`;
+    btn.addEventListener('click', () => selectSpot(sp));
+    row.appendChild(btn);
+  });
+
+  // Map click/touch
+  const svg = document.getElementById('riaMap');
+  svg.addEventListener('click', e => {
+    const rect = svg.getBoundingClientRect();
+    const scaleX = 360 / rect.width;
+    const scaleY = 215 / rect.height;
+    const svgX = (e.clientX - rect.left) * scaleX;
+    const svgY = (e.clientY - rect.top)  * scaleY;
+
+    // Only react to lagoon area (y 48–170)
+    if (svgY < 42 || svgY > 175) return;
+
+    const spot = {
+      name: coordToName(svgX, svgY),
+      svgX, svgY,
+      emoji: '📍',
+      desc: 'Ponto personalizado no mapa'
+    };
+    selectSpot(spot, true);
+  });
+
+  // Select default
+  selectSpot(LAUNCH_POINTS[0]);
+}
+
+function coordToName(x, y) {
+  // Find closest named launch point
+  const closest = LAUNCH_POINTS.reduce((best, p) => {
+    const d = Math.hypot(p.svgX - x, p.svgY - y);
+    return d < best.d ? { p, d } : best;
+  }, { p: null, d: Infinity });
+  if (closest.d < 25) return closest.p.name;
+
+  // Otherwise describe by section
+  if (x < 80)  return 'Canal Ancão/Faro';
+  if (x < 160) return 'Canal Faro/Armona';
+  if (x < 220) return 'Canal Armona/Fuzeta';
+  if (x < 265) return 'Canal Fuzeta/Tavira';
+  return 'Canal Tavira/Manta';
+}
+
+// ════════════════════════════════════════════════════════
+// SOCIAL CARD GENERATOR
+// ════════════════════════════════════════════════════════
+
+async function generateSocialCard() {
+  const canvas = document.createElement('canvas');
+  canvas.width  = 1080;
+  canvas.height = 1080;
+  const ctx = canvas.getContext('2d');
+
+  const d = sel;
+  const h = tideHeight(d);
+  const r = tideRate(d);
+  const flow = selectedSpot ? getFlowAtPoint(selectedSpot.svgX, selectedSpot.svgY, r) : null;
+  const next = turnings.find(tp => tp.time > d);
+  const moon = moonInfo(d);
+
+  // ── Background photo ──
+  const photos = [
+    'images/Ria-Formosa-from-the-Skies-Algarve.jpg',
+    'images/Sunset-Boat-Tour-Season2022-21.jpg',
+    'images/image1-1536x1151.jpg',
+    'images/cacela-velha-1-1024x574.jpg',
+  ];
+  await new Promise(res => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      // Cover crop
+      const iR = img.width / img.height;
+      let sw = img.width, sh = img.height, sx = 0, sy = 0;
+      if (iR > 1) { sw = img.height; sx = (img.width - sw) / 2; }
+      else         { sh = img.width;  sy = (img.height - sh) / 2; }
+      ctx.drawImage(img, sx, sy, sw, sh, 0, 0, 1080, 1080);
+      res();
+    };
+    img.onerror = res;
+    img.src = photos[bgIdx % photos.length];
+  });
+
+  // ── Dark overlay gradient ──
+  const grad = ctx.createLinearGradient(0, 0, 0, 1080);
+  grad.addColorStop(0,   'rgba(10,22,40,.72)');
+  grad.addColorStop(0.4, 'rgba(10,22,40,.45)');
+  grad.addColorStop(1,   'rgba(10,22,40,.92)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 1080, 1080);
+
+  // ── Helper: round rect ──
+  function rr(x, y, w, h2, r2, fill) {
+    ctx.beginPath();
+    ctx.roundRect(x, y, w, h2, r2);
+    ctx.fillStyle = fill;
+    ctx.fill();
+  }
+
+  // ── WILDERNESS LOGO (text fallback) ──
+  ctx.fillStyle = 'rgba(255,255,255,.7)';
+  ctx.font = 'bold 28px -apple-system, Arial, sans-serif';
+  ctx.letterSpacing = '8px';
+  ctx.textAlign = 'center';
+  ctx.fillText('WILDERNESS SYSTEMS', 540, 70);
+  ctx.letterSpacing = '0px';
+
+  // ── RIA FORMOSA tag ──
+  rr(400, 88, 280, 38, 20, 'rgba(0,180,216,.18)');
+  ctx.strokeStyle = 'rgba(0,180,216,.4)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.roundRect(400, 88, 280, 38, 20); ctx.stroke();
+  ctx.fillStyle = '#48cae4';
+  ctx.font = 'bold 18px -apple-system, Arial';
+  ctx.textAlign = 'center';
+  ctx.fillText('📍 Ria Formosa · Algarve', 540, 113);
+
+  // ── Date + time ──
+  ctx.fillStyle = 'rgba(255,255,255,.55)';
+  ctx.font = '32px -apple-system, Arial';
+  const dayPT = d.toLocaleDateString('pt-PT', { weekday: 'long', day: 'numeric', month: 'long' });
+  const timePT = `${p2(d.getHours())}:${p2(d.getMinutes())}`;
+  ctx.fillText(`${dayPT}  ·  ${timePT}`, 540, 175);
+
+  // ── Big tide direction ──
+  const rising = r > 0.08;
+  const falling = r < -0.08;
+  const tideColor = rising ? '#22c55e' : falling ? '#f97316' : '#00b4d8';
+  const tideText  = rising ? '↑ MARÉ A SUBIR' : falling ? '↓ MARÉ A DESCER' : '◎ ÁGUA PARADA';
+
+  ctx.fillStyle = tideColor;
+  ctx.font = 'bold 68px -apple-system, Arial';
+  ctx.letterSpacing = '6px';
+  ctx.fillText(tideText, 540, 290);
+  ctx.letterSpacing = '0px';
+
+  // ── Height display ──
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 200px -apple-system, Arial';
+  ctx.textAlign = 'center';
+  ctx.fillText(h.toFixed(1), 540, 510);
+  ctx.fillStyle = 'rgba(255,255,255,.5)';
+  ctx.font = '52px -apple-system, Arial';
+  ctx.fillText('metros', 540, 575);
+
+  // ── Next turning point ──
+  if (next) {
+    const mins = Math.round((next.time - d) / 60000);
+    const hh = Math.floor(mins / 60), mm = mins % 60;
+    const whenStr = hh > 0 ? `${hh}h ${mm}min` : `${mm}min`;
+    const typeStr = next.type === 'HW' ? '↑ Preia-Mar' : '↓ Baixa-Mar';
+    rr(140, 605, 800, 64, 32, 'rgba(255,255,255,.07)');
+    ctx.fillStyle = 'rgba(255,255,255,.85)';
+    ctx.font = 'bold 28px -apple-system, Arial';
+    ctx.fillText(`Próxima ${typeStr}: ${p2(next.time.getHours())}:${p2(next.time.getMinutes())} (${next.height.toFixed(2)}m) · em ${whenStr}`, 540, 645);
+  }
+
+  // ── Location + current ──
+  if (selectedSpot && flow) {
+    rr(80, 695, 920, 110, 24, 'rgba(0,180,216,.10)');
+    ctx.strokeStyle = 'rgba(0,180,216,.3)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.roundRect(80, 695, 920, 110, 24); ctx.stroke();
+
+    ctx.fillStyle = '#48cae4';
+    ctx.font = 'bold 24px -apple-system, Arial';
+    ctx.fillText(`${selectedSpot.emoji} ${selectedSpot.name}`, 540, 732);
+    ctx.fillStyle = flow.color;
+    ctx.font = 'bold 38px -apple-system, Arial';
+    ctx.fillText(`${flow.arrow} ${flow.dir}`, 540, 780);
+  }
+
+  // ── Moon phase ──
+  ctx.fillStyle = 'rgba(255,255,255,.5)';
+  ctx.font = '28px -apple-system, Arial';
+  ctx.fillText(`${moon.emoji} ${moon.name}  ·  ${moon.tideType}`, 540, 850);
+
+  // ── Challenge line ──
+  rr(140, 875, 800, 70, 35, 'rgba(0,180,216,.15)');
+  ctx.fillStyle = '#00b4d8';
+  ctx.font = 'bold 30px -apple-system, Arial';
+  ctx.fillText('🛶 Vens comigo andar de kayak?', 540, 918);
+
+  // ── App URL watermark ──
+  ctx.fillStyle = 'rgba(255,255,255,.3)';
+  ctx.font = '22px -apple-system, Arial';
+  ctx.fillText('articoclim-bot.github.io/ria-formosa-kayak', 540, 1010);
+
+  // ── Bottom line ──
+  ctx.strokeStyle = 'rgba(0,180,216,.25)';
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(80, 1030); ctx.lineTo(1000, 1030); ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,.2)';
+  ctx.font = '18px -apple-system, Arial';
+  ctx.fillText('#RiaFormosaKayak  #WildernessSystems  #Kayak  #Algarve', 540, 1058);
+
+  return canvas;
+}
+
+function setupShare() {
+  document.getElementById('btnShare').addEventListener('click', async () => {
+    const canvas = await generateSocialCard();
+
+    // Show modal
+    const preview = document.getElementById('modalPreview');
+    preview.innerHTML = '';
+    // Scale down for preview
+    const img = document.createElement('img');
+    img.src = canvas.toDataURL('image/jpeg', .92);
+    preview.appendChild(img);
+    document.getElementById('modalOverlay').classList.add('open');
+
+    // Share button
+    document.getElementById('btnShareNative').onclick = async () => {
+      const blob = await new Promise(r => canvas.toBlob(r, 'image/jpeg', .92));
+      if (navigator.share && navigator.canShare?.({ files: [new File([blob], 'ria-formosa.jpg', { type: 'image/jpeg' })] })) {
+        await navigator.share({
+          title: 'Ria Formosa · Marés & Kayak',
+          text: '🛶 Vens comigo andar de kayak na Ria Formosa?',
+          files: [new File([blob], 'ria-formosa-mares.jpg', { type: 'image/jpeg' })],
+        }).catch(() => {});
+      } else {
+        // Fallback: download
+        downloadCard(canvas);
+      }
+    };
+
+    // Download button
+    document.getElementById('btnDownload').onclick = () => downloadCard(canvas);
+
+    // Close
+    document.getElementById('btnCloseModal').onclick = () =>
+      document.getElementById('modalOverlay').classList.remove('open');
+    document.getElementById('modalOverlay').addEventListener('click', e => {
+      if (e.target === document.getElementById('modalOverlay'))
+        document.getElementById('modalOverlay').classList.remove('open');
+    });
+  });
+}
+
+function downloadCard(canvas) {
+  const a = document.createElement('a');
+  a.href = canvas.toDataURL('image/jpeg', .92);
+  const dt = sel.toISOString().slice(0, 16).replace('T', '_').replace(':', 'h');
+  a.download = `ria-formosa-${dt}.jpg`;
+  a.click();
 }
 
 // ════
