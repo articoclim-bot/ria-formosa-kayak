@@ -421,6 +421,60 @@
       opacity: .7;
     }
 
+    /* ── WIND CARD ── */
+    .wind-card {
+      background: rgba(255,255,255,.05);
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 18px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .wind-main {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+    }
+    .wind-compass svg { flex-shrink: 0; }
+    .wind-vals { flex: 1; }
+    .wind-speed {
+      font-size: 52px;
+      font-weight: 800;
+      color: #00b4d8;
+      line-height: 1;
+    }
+    .wind-unit {
+      font-size: 14px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+    .wind-dir-label {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--text);
+      margin-top: 8px;
+    }
+    .wind-gust {
+      font-size: 13px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+    .wind-badge {
+      text-align: center;
+      padding: 10px 16px;
+      border-radius: 12px;
+      font-weight: 700;
+      font-size: 15px;
+      letter-spacing: .5px;
+    }
+    .wind-updated {
+      text-align: center;
+      font-size: 11px;
+      color: var(--muted);
+      opacity: .6;
+    }
+
     /* ── SHARE BUTTON ── */
     .share-section {
       padding: 0 20px 28px;
@@ -879,6 +933,36 @@
   </div>
 </div>
 
+<!-- ═══════════════════ VENTO ═══════════════════ -->
+<div class="section">
+  <div class="sec-title">🌬️ Vento Atual · Faro</div>
+  <div class="wind-card" id="windCard">
+    <div class="wind-main">
+      <div class="wind-compass" id="windCompass">
+        <svg viewBox="0 0 80 80" width="80" height="80">
+          <circle cx="40" cy="40" r="36" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="2"/>
+          <text x="40" y="12" fill="rgba(255,255,255,.4)" font-size="9" text-anchor="middle" font-family="sans-serif">N</text>
+          <text x="40" y="74" fill="rgba(255,255,255,.4)" font-size="9" text-anchor="middle" font-family="sans-serif">S</text>
+          <text x="9" y="44" fill="rgba(255,255,255,.4)" font-size="9" text-anchor="middle" font-family="sans-serif">W</text>
+          <text x="71" y="44" fill="rgba(255,255,255,.4)" font-size="9" text-anchor="middle" font-family="sans-serif">E</text>
+          <g id="windArrowG" transform="rotate(0,40,40)">
+            <polygon points="40,10 45,55 40,50 35,55" fill="#00b4d8"/>
+            <polygon points="40,70 45,25 40,30 35,25" fill="rgba(255,255,255,.2)"/>
+          </g>
+        </svg>
+      </div>
+      <div class="wind-vals">
+        <div class="wind-speed" id="windSpeed">—</div>
+        <div class="wind-unit">nós</div>
+        <div class="wind-dir-label" id="windDirLabel">—</div>
+        <div class="wind-gust" id="windGust">—</div>
+      </div>
+    </div>
+    <div class="wind-badge" id="windBadge">A carregar…</div>
+    <div class="wind-updated" id="windUpdated"></div>
+  </div>
+</div>
+
 <!-- ═══════════════════ BEST WINDOWS ═══════════════════ -->
 <div class="section">
   <div class="sec-title">Melhores Momentos · Hoje</div>
@@ -1093,6 +1177,66 @@ async function fetchSunTimes(date) {
     }
   } catch (_) {}
   return sunTimesFormula(date);
+}
+
+// ── Wind (Open-Meteo current weather, cached 10 min) ──
+let _windCache = null;
+let _windFetchedAt = 0;
+
+async function fetchWind() {
+  const now = Date.now();
+  if (_windCache && now - _windFetchedAt < 10 * 60000) return _windCache;
+  try {
+    const url = 'https://api.open-meteo.com/v1/forecast?latitude=37.01&longitude=-7.93' +
+      '&current=wind_speed_10m,wind_direction_10m,wind_gusts_10m' +
+      '&wind_speed_unit=kn&timezone=Europe%2FLisbon';
+    const res = await fetch(url);
+    const data = await res.json();
+    const c = data.current;
+    if (c) {
+      _windCache = {
+        speed:  Math.round(c.wind_speed_10m),
+        gusts:  Math.round(c.wind_gusts_10m),
+        dir:    c.wind_direction_10m,
+        time:   c.time,
+      };
+      _windFetchedAt = now;
+      return _windCache;
+    }
+  } catch (_) {}
+  return null;
+}
+
+function degToCompass(deg) {
+  const dirs = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSO','SO','OSO','O','ONO','NO','NNO'];
+  return dirs[Math.round(deg / 22.5) % 16];
+}
+
+function windKayakStatus(knots, gusts) {
+  if (knots <= 10 && gusts <= 15) return { label: '✅ Boas condições para caiaque', bg: 'rgba(34,197,94,.15)', color: '#22c55e' };
+  if (knots <= 16 && gusts <= 22) return { label: '⚠️ Vento moderado · cuidado', bg: 'rgba(234,179,8,.15)', color: '#eab308' };
+  if (knots <= 22 && gusts <= 28) return { label: '🟠 Vento forte · só experientes', bg: 'rgba(249,115,22,.15)', color: '#f97316' };
+  return { label: '🔴 Perigoso · não sair para a água', bg: 'rgba(239,68,68,.15)', color: '#ef4444' };
+}
+
+async function updateWind() {
+  const w = await fetchWind();
+  if (!w) return;
+  const status = windKayakStatus(w.speed, w.gusts);
+  const compass = degToCompass(w.dir);
+
+  document.getElementById('windSpeed').textContent = w.speed;
+  document.getElementById('windDirLabel').textContent = `De ${compass} (${w.dir}°)`;
+  document.getElementById('windGust').textContent = `Rajadas até ${w.gusts} nós`;
+  document.getElementById('windArrowG').setAttribute('transform', `rotate(${w.dir},40,40)`);
+
+  const badge = document.getElementById('windBadge');
+  badge.textContent = status.label;
+  badge.style.background = status.bg;
+  badge.style.color = status.color;
+
+  const t = w.time ? w.time.slice(11, 16) : '';
+  document.getElementById('windUpdated').textContent = `Atualizado às ${t} · Open-Meteo`;
 }
 
 // Formula fallback (±5 min accuracy)
@@ -1400,6 +1544,9 @@ async function updateConditions(d) {
   document.getElementById('currentStr').textContent = pct + '%';
   const strLabel = pct > 75 ? 'Corrente Forte' : pct > 50 ? 'Corrente Moderada' : 'Corrente Suave';
   document.getElementById('currentStrSub').textContent = strLabel;
+
+  // Wind — real-time, cached 10 min
+  await updateWind();
 
   // Sun — via Open-Meteo API (accurate)
   const sun = await fetchSunTimes(d);
