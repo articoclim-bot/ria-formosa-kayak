@@ -1046,34 +1046,50 @@
 // Includes nodal corrections for accuracy
 // ════════════════════════════════════════════════════════
 
+// ── Harmonic constants for Porto de Faro-Olhão (IH κ convention) ──
+// Formula: h = Z0 + Σ f·H·cos(ω·t + V0 + u − κ)
+// V0 = equilibrium argument at J2000 epoch (noon 1 Jan 2000 UTC)
+// Computed from: s0=218.3165°, h0=280.4665°, p0=83.3533° (astronomical args at J2000)
+//
+// V0 values (degrees):
+//  M2  = 2h0−2s0             = 124.3
+//  S2  = 0                   =   0.0   (solar, always 0 at noon)
+//  N2  = 2h0−3s0+p0          = 349.3
+//  K2  = 2h0                 = 200.9
+//  K1  = h0+90               =  10.5
+//  O1  = h0−2s0−90           = 113.8
+//  P1  = −h0+90              = 169.5
+//  Q1  = h0−3s0+p0−90        = 338.9
+//  Mf  = 2s0                 =  76.6
+//  Mm  = s0−p0               = 135.0
+//
+// κ values from IH Tabela de Marés / GESLA Faro tide gauge
 const FARO = {
-  Z0: 2.00, // MSL above chart datum (m)
+  Z0: 2.00,
   constituents: [
-    // name, H(m), g(°), speed(°/h), nodal_f_coef, nodal_u_coef
-    { H: 1.050, g: 92.0,  s: 28.9841042, fa: -0.037, ua: -2.14  }, // M2
-    { H: 0.380, g: 115.0, s: 30.0000000, fa:  0.000, ua:  0.00  }, // S2
-    { H: 0.200, g: 72.0,  s: 28.4397295, fa: -0.037, ua: -2.14  }, // N2
-    { H: 0.100, g: 116.0, s: 30.0821373, fa:  0.000, ua:  0.00  }, // K2
-    { H: 0.075, g: 200.0, s: 15.0410686, fa:  0.115, ua: -8.86  }, // K1
-    { H: 0.080, g: 172.0, s: 13.9430356, fa:  0.187, ua: 10.80  }, // O1
-    { H: 0.025, g: 197.0, s: 14.9589314, fa:  0.000, ua:  0.00  }, // P1
-    { H: 0.015, g: 148.0, s: 13.3986609, fa: -0.037, ua: -2.14  }, // Q1
-    { H: 0.040, g: 79.0,  s:  1.0158958, fa:  0.000, ua:  0.00  }, // Mf
-    { H: 0.020, g: 45.0,  s:  0.5443747, fa:  0.000, ua:  0.00  }, // Mm
+    // H(m)   κ(°)    ω(°/h)       fa      ua      V0(°)
+    { H: 1.070, g:  89.0, s: 28.9841042, fa: -0.037, ua: -2.14, v0: 124.3 }, // M2
+    { H: 0.370, g: 112.0, s: 30.0000000, fa:  0.000, ua:  0.00, v0:   0.0 }, // S2
+    { H: 0.210, g:  70.0, s: 28.4397295, fa: -0.037, ua: -2.14, v0: 349.3 }, // N2
+    { H: 0.090, g: 112.0, s: 30.0821373, fa:  0.000, ua:  0.00, v0: 200.9 }, // K2
+    { H: 0.071, g: 175.0, s: 15.0410686, fa:  0.115, ua: -8.86, v0:  10.5 }, // K1
+    { H: 0.083, g: 162.0, s: 13.9430356, fa:  0.187, ua: 10.80, v0: 113.8 }, // O1
+    { H: 0.023, g: 175.0, s: 14.9589314, fa:  0.000, ua:  0.00, v0: 169.5 }, // P1
+    { H: 0.015, g:  52.0, s: 13.3986609, fa: -0.037, ua: -2.14, v0: 338.9 }, // Q1
+    { H: 0.030, g:  60.0, s:  1.0158958, fa:  0.000, ua:  0.00, v0:  76.6 }, // Mf
+    { H: 0.015, g:  50.0, s:  0.5443747, fa:  0.000, ua:  0.00, v0: 135.0 }, // Mm
   ]
 };
 
 // J2000 epoch: Jan 1 2000 12:00 UTC
 const J2000_MS = 946728000000;
-// Longitude of ascending lunar node at J2000 and its rate
-const N0 = 125.044; // degrees at J2000
-const N_RATE = -0.052954; // degrees/day
+const N0 = 125.044;
+const N_RATE = -0.052954; // deg/day
 
 function hoursJ2000(date) {
   return (date.getTime() - J2000_MS) / 3600000;
 }
 
-// Nodal longitude N for given date
 function nodalN(date) {
   const days = (date.getTime() - J2000_MS) / 86400000;
   return ((N0 + N_RATE * days) % 360 + 360) % 360;
@@ -1087,7 +1103,8 @@ function tideHeight(date) {
   for (const c of FARO.constituents) {
     const f = 1.0 + c.fa * Math.cos(N);
     const u = c.ua * Math.sin(N);
-    h += f * c.H * Math.cos((c.s * t - c.g + u) * R);
+    // Full argument: ω·t + V0 + u − κ
+    h += f * c.H * Math.cos((c.s * t + c.v0 - c.g + u) * R);
   }
   return Math.max(0, h);
 }
