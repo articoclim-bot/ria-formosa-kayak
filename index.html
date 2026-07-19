@@ -965,7 +965,7 @@
       </div>
       <div class="wind-vals">
         <div class="wind-speed" id="windSpeed">—</div>
-        <div class="wind-unit">nós</div>
+        <div class="wind-unit">km/h</div>
         <div class="wind-dir-label" id="windDirLabel">—</div>
         <div class="wind-gust" id="windGust">—</div>
       </div>
@@ -1211,7 +1211,7 @@ async function fetchSunTimes(date) {
 
 // ── Wind (Open-Meteo current weather, cached 10 min) ──
 let _windCache = null;
-let _windFetchedAt = 0;
+let _windFetchedAt = 0; // reset on page load — forces fresh fetch with new unit
 
 async function fetchWind() {
   const now = Date.now();
@@ -1219,7 +1219,7 @@ async function fetchWind() {
   try {
     const url = 'https://api.open-meteo.com/v1/forecast?latitude=37.01&longitude=-7.93' +
       '&current=wind_speed_10m,wind_direction_10m,wind_gusts_10m' +
-      '&wind_speed_unit=kn&timezone=Europe%2FLisbon';
+      '&wind_speed_unit=kmh&timezone=Europe%2FLisbon';
     const res = await fetch(url);
     const data = await res.json();
     const c = data.current;
@@ -1242,10 +1242,10 @@ function degToCompass(deg) {
   return dirs[Math.round(deg / 22.5) % 16];
 }
 
-function windKayakStatus(knots, gusts) {
-  if (knots <= 10 && gusts <= 15) return { label: '✅ Boas condições para caiaque', bg: 'rgba(34,197,94,.15)', color: '#22c55e' };
-  if (knots <= 16 && gusts <= 22) return { label: '⚠️ Vento moderado · cuidado', bg: 'rgba(234,179,8,.15)', color: '#eab308' };
-  if (knots <= 22 && gusts <= 28) return { label: '🟠 Vento forte · só experientes', bg: 'rgba(249,115,22,.15)', color: '#f97316' };
+function windKayakStatus(kmh, gusts) {
+  if (kmh <= 19 && gusts <= 28) return { label: '✅ Boas condições para caiaque', bg: 'rgba(34,197,94,.15)', color: '#22c55e' };
+  if (kmh <= 30 && gusts <= 41) return { label: '⚠️ Vento moderado · cuidado', bg: 'rgba(234,179,8,.15)', color: '#eab308' };
+  if (kmh <= 41 && gusts <= 52) return { label: '🟠 Vento forte · só experientes', bg: 'rgba(249,115,22,.15)', color: '#f97316' };
   return { label: '🔴 Perigoso · não sair para a água', bg: 'rgba(239,68,68,.15)', color: '#ef4444' };
 }
 
@@ -1257,7 +1257,7 @@ async function updateWind() {
 
   document.getElementById('windSpeed').textContent = w.speed;
   document.getElementById('windDirLabel').textContent = `De ${compass} (${w.dir}°)`;
-  document.getElementById('windGust').textContent = `Rajadas até ${w.gusts} nós`;
+  document.getElementById('windGust').textContent = `Rajadas até ${w.gusts} km/h`;
   document.getElementById('windArrowG').setAttribute('transform', `rotate(${w.dir},40,40)`);
 
   const badge = document.getElementById('windBadge');
@@ -2045,8 +2045,8 @@ async function generateSocialCard() {
     const ws = windKayakStatus(_windCache.speed, _windCache.gusts);
     rr(540, 1390, 500, 120, 24, 'rgba(255,255,255,.05)');
     txt('💨', 610, 1465, '64px Arial', '#fff');
-    txt(`${_windCache.speed} nós`, 720, 1445, 'bold 34px Arial', '#00b4d8', 'left');
-    txt(`De ${degToCompass(_windCache.dir)} · raj. ${_windCache.gusts} nós`, 720, 1486, '22px Arial', 'rgba(255,255,255,.5)', 'left');
+    txt(`${_windCache.speed} km/h`, 720, 1445, 'bold 34px Arial', '#00b4d8', 'left');
+    txt(`De ${degToCompass(_windCache.dir)} · raj. ${_windCache.gusts} km/h`, 720, 1486, '22px Arial', 'rgba(255,255,255,.5)', 'left');
   }
 
   // ══════════════ CHALLENGE (1580–1720) ══════════════
